@@ -62,11 +62,11 @@ do { \
 void initialize()
 {
 #if !ENABLE(C_LOOP) && ((CPU(ADDRESS64) && (CPU(ARM64) || CPU(X86_64))) || (CPU(ADDRESS32) && CPU(ARM_THUMB2)))
-    g_jscConfig.ipint_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_unreachable_validate)).template untaggedPtr<>();
-    g_jscConfig.ipint_gc_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_struct_new_validate)).template untaggedPtr<>();
-    g_jscConfig.ipint_conversion_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_i32_trunc_sat_f32_s_validate)).template untaggedPtr<>();
-    g_jscConfig.ipint_simd_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_simd_v128_load_mem_validate)).template untaggedPtr<>();
-    g_jscConfig.ipint_atomic_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_memory_atomic_notify_validate)).template untaggedPtr<>();
+    g_jscConfig.ipint_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_unreachable_validate)).template retaggedPtr<IPIntDispatchPtrTag>();
+    g_jscConfig.ipint_gc_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_struct_new_validate)).template retaggedPtr<IPIntDispatchPtrTag>();
+    g_jscConfig.ipint_conversion_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_i32_trunc_sat_f32_s_validate)).template retaggedPtr<IPIntDispatchPtrTag>();
+    g_jscConfig.ipint_simd_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_simd_v128_load_mem_validate)).template retaggedPtr<IPIntDispatchPtrTag>();
+    g_jscConfig.ipint_atomic_dispatch_base = CodePtr<CFunctionPtrTag>::fromTaggedPtr(reinterpret_cast<void*>(ipint_memory_atomic_notify_validate)).template retaggedPtr<IPIntDispatchPtrTag>();
 
     FOR_EACH_IPINT_OPCODE(VALIDATE_IPINT_OPCODE);
     FOR_EACH_IPINT_GC_OPCODE(VALIDATE_IPINT_GC_OPCODE);

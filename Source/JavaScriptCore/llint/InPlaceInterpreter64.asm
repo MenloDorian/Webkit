@@ -69,7 +69,14 @@ macro nextIPIntInstruction()
     loadb [PC], t0
 if ARM64 or ARM64E
     # x0 = opcode
-    pcrtoaddr ipint_dispatch_base, t7
+    if ARM64
+        pcrtoaddr ipint_dispatch_base, t7
+    else
+        leap _g_config, t7
+        loadp JSCConfigOffset + JSC::Config::ipint_dispatch_base[t7], t7
+        move IPIntDispatchPtrTag, t1
+        emit "autib x7, x1"
+    end
     emit "add x0, x7, x0, lsl #8"
     emit "br x0"
 elsif X86_64
@@ -3153,7 +3160,14 @@ ipintOp(_gc_prefix, macro()
     # Security guarantee: always less than 30 (0x00 -> 0x1e)
     biaeq t0, 0x1f, .ipint_gc_nonexistent
     if ARM64 or ARM64E
-        pcrtoaddr ipint_gc_dispatch_base, t1
+        if ARM64
+            pcrtoaddr ipint_gc_dispatch_base, t1
+        else
+            leap _g_config, t1
+            loadp JSCConfigOffset + JSC::Config::ipint_gc_dispatch_base[t1], t1
+            move IPIntDispatchPtrTag, t2
+            emit "autib x1, x2"
+        end
         emit "add x0, x1, x0, lsl 8"
         emit "br x0"
     elsif X86_64
@@ -3173,7 +3187,14 @@ ipintOp(_conversion_prefix, macro()
     # Security guarantee: always less than 18 (0x00 -> 0x11)
     biaeq t0, 0x12, .ipint_conversion_nonexistent
     if ARM64 or ARM64E
-        pcrtoaddr ipint_conversion_dispatch_base, t1
+        if ARM64
+            pcrtoaddr ipint_conversion_dispatch_base, t1
+        else
+            leap _g_config, t1
+            loadp JSCConfigOffset + JSC::Config::ipint_conversion_dispatch_base[t1], t1
+            move IPIntDispatchPtrTag, t2
+            emit "autib x1, x2"
+        end
         emit "add x0, x1, x0, lsl 8"
         emit "br x0"
     elsif X86_64
@@ -3193,7 +3214,14 @@ ipintOp(_simd_prefix, macro()
     # Security guarantee: always less than 256 (0x00 -> 0xff)
     biaeq t0, 0x100, .ipint_simd_nonexistent
     if ARM64 or ARM64E
-        pcrtoaddr ipint_simd_dispatch_base, t1
+        if ARM64
+            pcrtoaddr ipint_simd_dispatch_base, t1
+        else
+            leap _g_config, t1
+            loadp JSCConfigOffset + JSC::Config::ipint_simd_dispatch_base[t1], t1
+            move IPIntDispatchPtrTag, t2
+            emit "autib x1, x2"
+        end
         emit "add x0, x1, x0, lsl 8"
         emit "br x0"
     elsif X86_64
@@ -3213,7 +3241,14 @@ ipintOp(_atomic_prefix, macro()
     # Security guarantee: always less than 78 (0x00 -> 0x4e)
     biaeq t0, 0x4f, .ipint_atomic_nonexistent
     if ARM64 or ARM64E
-        pcrtoaddr ipint_atomic_dispatch_base, t1
+        if ARM64
+            pcrtoaddr ipint_atomic_dispatch_base, t1
+        else
+            leap _g_config, t1
+            loadp JSCConfigOffset + JSC::Config::ipint_atomic_dispatch_base[t1], t1
+            move IPIntDispatchPtrTag, t2
+            emit "autib x1, x2"
+        end
         emit "add x0, x1, x0, lsl 8"
         emit "br x0"
     elsif X86_64

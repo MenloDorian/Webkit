@@ -124,6 +124,7 @@ end
 # 1.2: Constant definitions
 # -------------------------
 
+const IPIntDispatchPtrTag = constexpr IPIntDispatchPtrTag
 const PtrSize = constexpr (sizeof(void*))
 const MachineRegisterSize = constexpr (sizeof(CPURegister))
 const SlotSize = constexpr (sizeof(Register))
