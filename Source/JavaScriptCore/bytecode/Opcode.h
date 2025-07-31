@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2021 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2025 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,7 +62,7 @@ const int numOpcodeIDs = NUMBER_OF_BYTECODE_IDS + NUMBER_OF_CLOOP_BYTECODE_HELPE
 const int numOpcodeIDs = NUMBER_OF_BYTECODE_IDS + NUMBER_OF_BYTECODE_HELPER_IDS;
 #endif
 
-constexpr int numWasmOpcodeIDs = NUMBER_OF_WASM_IDS + NUMBER_OF_BYTECODE_HELPER_IDS;
+constexpr int numWasmOpcodeIDs = std::max(NUMBER_OF_WASM_IDS, 256);
 
 #define OPCODE_ID_ENUM(opcode, length) opcode,
     enum OpcodeID : unsigned { FOR_EACH_OPCODE_ID(OPCODE_ID_ENUM) };

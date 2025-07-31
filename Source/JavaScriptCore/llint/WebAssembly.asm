@@ -131,20 +131,20 @@ end
 
 macro wasmNextInstruction()
     loadb [PB, PC, 1], t0
-    leap _g_opcodeMap, t1
-    jmp NumberOfJSOpcodeIDs * PtrSize[t1, t0, PtrSize], BytecodePtrTag, AddressDiversified
+    leap _g_opcodeConfigStorage, t1
+    jmp ((NumberOfJSOpcodeIDs * PtrSize) + JSC::LLInt::OpcodeConfig::opcodeMap)[t1, t0, PtrSize]
 end
 
 macro wasmNextInstructionWide16()
     loadb OpcodeIDNarrowSize[PB, PC, 1], t0
-    leap _g_opcodeMapWide16, t1
-    jmp NumberOfJSOpcodeIDs * PtrSize[t1, t0, PtrSize], BytecodePtrTag, AddressDiversified
+    leap _g_opcodeConfigStorage, t1
+    jmp ((NumberOfJSOpcodeIDs * PtrSize) + JSC::LLInt::OpcodeConfig::opcodeMapWide16)[t1, t0, PtrSize]
 end
 
 macro wasmNextInstructionWide32()
     loadb OpcodeIDNarrowSize[PB, PC, 1], t0
-    leap _g_opcodeMapWide32, t1
-    jmp NumberOfJSOpcodeIDs * PtrSize[t1, t0, PtrSize], BytecodePtrTag, AddressDiversified
+    leap _g_opcodeConfigStorage, t1
+    jmp ((NumberOfJSOpcodeIDs * PtrSize) + JSC::LLInt::OpcodeConfig::opcodeMapWide32)[t1, t0, PtrSize]
 end
 
 macro checkSwitchToJIT(increment, action)
@@ -1438,6 +1438,7 @@ end)
 macro jumpToException()
     if ARM64E
         move r0, a0
+        validateOpcodeConfig(a1)
         leap _g_config, a1
         jmp JSCConfigGateMapOffset + (constexpr Gate::exceptionHandler) * PtrSize[a1], NativeToJITGatePtrTag # ExceptionHandlerPtrTag
     else
@@ -1446,6 +1447,7 @@ macro jumpToException()
 end
 
 op(wasm_throw_from_slow_path_trampoline, macro ()
+    validateOpcodeConfig(t5)
     loadp JSWebAssemblyInstance::m_vm[wasmInstance], t5
     loadp VM::topEntryFrame[t5], t5
     copyCalleeSavesToEntryFrameCalleeSavesBuffer(t5)

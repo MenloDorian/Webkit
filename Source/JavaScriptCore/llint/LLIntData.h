@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2024 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2025 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,9 +45,33 @@ typedef void (SYSV_ABI *LLIntCode)();
 
 namespace LLInt {
 
-extern "C" JS_EXPORT_PRIVATE JSC::Opcode g_opcodeMap[numOpcodeIDs + numWasmOpcodeIDs];
-extern "C" JS_EXPORT_PRIVATE JSC::Opcode g_opcodeMapWide16[numOpcodeIDs + numWasmOpcodeIDs];
-extern "C" JS_EXPORT_PRIVATE JSC::Opcode g_opcodeMapWide32[numOpcodeIDs + numWasmOpcodeIDs];
+constexpr size_t OpcodeConfigAlignment = CeilingOnPageSize;
+constexpr size_t OpcodeConfigSizeToProtect = std::max(CeilingOnPageSize, 16 * KB);
+
+struct OpcodeConfig {
+    static constexpr size_t numberOfOpcodesPerMap = numOpcodeIDs + numWasmOpcodeIDs;
+    JSC::Opcode opcodeMap[numberOfOpcodesPerMap];
+    JSC::Opcode opcodeMapWide16[numberOfOpcodesPerMap];
+    JSC::Opcode opcodeMapWide32[numberOfOpcodesPerMap];
+
+    void* ipint_dispatch_base;
+    void* ipint_gc_dispatch_base;
+    void* ipint_conversion_dispatch_base;
+    void* ipint_simd_dispatch_base;
+    void* ipint_atomic_dispatch_base;
+};
+
+extern "C" WTF_EXPORT_PRIVATE JSC::Opcode g_opcodeConfigStorage[];
+
+WTF_ALLOW_UNSAFE_BUFFER_USAGE_BEGIN
+
+inline OpcodeConfig* addressOfOpcodeConfig() { return std::bit_cast<OpcodeConfig*>(&g_opcodeConfigStorage); }
+
+#define g_opcodeConfig (*JSC::LLInt::addressOfOpcodeConfig())
+
+#define g_opcodeMap g_opcodeConfig.opcodeMap
+#define g_opcodeMapWide16 g_opcodeConfig.opcodeMapWide16
+#define g_opcodeMapWide32 g_opcodeConfig.opcodeMapWide32
 
 class Data {
     friend void initialize();
@@ -60,9 +84,6 @@ class Data {
     friend JSC::Opcode getOpcode(OpcodeID);
     friend JSC::Opcode getOpcodeWide16(OpcodeID);
     friend JSC::Opcode getOpcodeWide32(OpcodeID);
-    friend const JSC::Opcode* getOpcodeAddress(OpcodeID);
-    friend const JSC::Opcode* getOpcodeWide16Address(OpcodeID);
-    friend const JSC::Opcode* getOpcodeWide32Address(OpcodeID);
     template<PtrTag tag> friend CodePtr<tag> getCodePtr(OpcodeID);
     template<PtrTag tag> friend CodePtr<tag> getWide16CodePtr(OpcodeID);
     template<PtrTag tag> friend CodePtr<tag> getWide32CodePtr(OpcodeID);
@@ -125,31 +146,11 @@ inline JSC::Opcode getOpcodeWide32(OpcodeID id)
 #endif
 }
 
-
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-inline const JSC::Opcode* getOpcodeAddress(OpcodeID id)
-{
-    return &g_opcodeMap[id];
-}
-
-inline const JSC::Opcode* getOpcodeWide16Address(OpcodeID id)
-{
-    return &g_opcodeMapWide16[id];
-}
-
-inline const JSC::Opcode* getOpcodeWide32Address(OpcodeID id)
-{
-    return &g_opcodeMapWide32[id];
-}
-#endif
-
 template<PtrTag tag>
-ALWAYS_INLINE CodePtr<tag> getCodePtrImpl(const JSC::Opcode opcode, const void* opcodeAddress)
+ALWAYS_INLINE CodePtr<tag> getCodePtrImpl(const JSC::Opcode opcode)
 {
-    void* opcodeValue = reinterpret_cast<void*>(opcode);
-    void* untaggedOpcode = untagAddressDiversifiedCodePtr<BytecodePtrTag>(opcodeValue, opcodeAddress);
-    void* retaggedOpcode = tagCodePtr<tag>(untaggedOpcode);
-    return CodePtr<tag>::fromTaggedPtr(retaggedOpcode);
+    void* taggedOpcode = tagCodePtr<tag>(reinterpret_cast<void*>(opcode));
+    return CodePtr<tag>::fromTaggedPtr(taggedOpcode);
 }
 
 #if ENABLE(ARM64E) && !ENABLE(COMPUTED_GOTO_OPCODES)
@@ -159,34 +160,19 @@ ALWAYS_INLINE CodePtr<tag> getCodePtrImpl(const JSC::Opcode opcode, const void* 
 template<PtrTag tag>
 ALWAYS_INLINE CodePtr<tag> getCodePtr(OpcodeID opcodeID)
 {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-    const JSC::Opcode* opcode = getOpcodeAddress(opcodeID);
-    return getCodePtrImpl<tag>(*opcode, opcode);
-#else
-    return getCodePtrImpl<tag>(getOpcode(opcodeID), nullptr);
-#endif
+    return getCodePtrImpl<tag>(getOpcode(opcodeID));
 }
 
 template<PtrTag tag>
 ALWAYS_INLINE CodePtr<tag> getWide16CodePtr(OpcodeID opcodeID)
 {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-    const JSC::Opcode* opcode = getOpcodeWide16Address(opcodeID);
-    return getCodePtrImpl<tag>(*opcode, opcode);
-#else
-    return getCodePtrImpl<tag>(getOpcodeWide16(opcodeID), nullptr);
-#endif
+    return getCodePtrImpl<tag>(getOpcodeWide16(opcodeID));
 }
 
 template<PtrTag tag>
 ALWAYS_INLINE CodePtr<tag> getWide32CodePtr(OpcodeID opcodeID)
 {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-    const JSC::Opcode* opcode = getOpcodeWide32Address(opcodeID);
-    return getCodePtrImpl<tag>(*opcode, opcode);
-#else
-    return getCodePtrImpl<tag>(getOpcodeWide32(opcodeID), nullptr);
-#endif
+    return getCodePtrImpl<tag>(getOpcodeWide32(opcodeID));
 }
 
 template<PtrTag tag>
@@ -272,54 +258,22 @@ inline JSC::Opcode getOpcodeWide32(WasmOpcodeID id)
 #endif
 }
 
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-inline const JSC::Opcode* getOpcodeAddress(WasmOpcodeID id)
-{
-    return &g_opcodeMap[numOpcodeIDs + id];
-}
-
-inline const JSC::Opcode* getOpcodeWide16Address(WasmOpcodeID id)
-{
-    return &g_opcodeMapWide16[numOpcodeIDs + id];
-}
-
-inline const JSC::Opcode* getOpcodeWide32Address(WasmOpcodeID id)
-{
-    return &g_opcodeMapWide32[numOpcodeIDs + id];
-}
-#endif
-
 template<PtrTag tag>
 ALWAYS_INLINE CodePtr<tag> getCodePtr(WasmOpcodeID opcodeID)
 {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-    const JSC::Opcode* opcode = getOpcodeAddress(opcodeID);
-    return getCodePtrImpl<tag>(*opcode, opcode);
-#else
-    return getCodePtrImpl<tag>(getOpcode(opcodeID), nullptr);
-#endif
+    return getCodePtrImpl<tag>(getOpcode(opcodeID));
 }
 
 template<PtrTag tag>
 ALWAYS_INLINE CodePtr<tag> getWide16CodePtr(WasmOpcodeID opcodeID)
 {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-    const JSC::Opcode* opcode = getOpcodeWide16Address(opcodeID);
-    return getCodePtrImpl<tag>(*opcode, opcode);
-#else
-    return getCodePtrImpl<tag>(getOpcodeWide16(opcodeID), nullptr);
-#endif
+    return getCodePtrImpl<tag>(getOpcodeWide16(opcodeID));
 }
 
 template<PtrTag tag>
 ALWAYS_INLINE CodePtr<tag> getWide32CodePtr(WasmOpcodeID opcodeID)
 {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-    const JSC::Opcode* opcode = getOpcodeWide32Address(opcodeID);
-    return getCodePtrImpl<tag>(*opcode, opcode);
-#else
-    return getCodePtrImpl<tag>(getOpcodeWide32(opcodeID), nullptr);
-#endif
+    return getCodePtrImpl<tag>(getOpcodeWide32(opcodeID));
 }
 
 template<PtrTag tag>

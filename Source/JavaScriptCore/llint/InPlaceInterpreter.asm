@@ -206,6 +206,7 @@ macro decodeLEBVarUInt32(offset, dst, scratch1, scratch2, scratch3, scratch4)
     move 7, scratch1
     # take off high bit
     subi 0x80, dst
+    validateOpcodeConfig(scratch2)
 .loop:
     addp 1, tempPC
     loadb [tempPC], scratch2
@@ -260,6 +261,7 @@ end
 
 macro unimplementedInstruction(instrname)
     instructionLabel(instrname)
+    validateOpcodeConfig(a0)
     break
 end
 
@@ -299,6 +301,8 @@ end
 # Operation Calls
 
 macro operationCall(fn)
+    validateOpcodeConfig(a0)
+
     move wasmInstance, a0
     push PC, MC
     if ARM64 or ARM64E
@@ -320,6 +324,7 @@ end
 
 macro operationCallMayThrow(fn)
     saveCallSiteIndex()
+    validateOpcodeConfig(a0)
 
     move wasmInstance, a0
     push PC, MC
@@ -434,6 +439,7 @@ end
 
 macro ipintLoopOSR(increment)
 if JIT and not ARMv7
+    validateOpcodeConfig(ws0)
     loadp UnboxedWasmCalleeStackSlot[cfr], ws0
     baddis increment, Wasm::IPIntCallee::m_tierUpCounter + Wasm::LLIntTierUpCounter::m_counter[ws0], .continue
 
@@ -516,11 +522,13 @@ else
 end
 end)
 
+const argumINTTmp = csr0
+
 if WEBASSEMBLY and (ARM64 or ARM64E or X86_64 or ARMv7)
 .ipint_entry_end_local:
     argumINTInitializeDefaultLocals()
-
     jmp .ipint_entry_end_local
+
 .ipint_entry_finish_zero:
     argumINTFinish()
 
@@ -551,6 +559,7 @@ else
 end
 
 macro ipintCatchCommon()
+    validateOpcodeConfig(t0)
     getVMFromCallFrame(t3, t0)
     restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
 
