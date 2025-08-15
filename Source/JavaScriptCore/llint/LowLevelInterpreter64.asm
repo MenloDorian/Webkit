@@ -1,4 +1,4 @@
-# Copyright (C) 2011-2023 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2025 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -327,7 +327,7 @@ _llint_call_javascript:
     elsif ARM64E
         move entry, t5
         leap _g_config, a7
-        jmp JSCConfigGateMapOffset + (constexpr Gate::vmEntryToJavaScript) * PtrSize[a7], NativeToJITGatePtrTag # JSEntryPtrTag
+        jmp JSCConfigGateMapOffset + (constexpr Gate::vmEntryToJavaScript) * PtrSize[a7], VMEntryToJITGatePtrTag # JSEntryPtrTag
         global _vmEntryToJavaScriptTrampoline
         _vmEntryToJavaScriptTrampoline:
         call t5, JSEntryPtrTag
